@@ -23,7 +23,7 @@ export default function ChargeScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { collectPaymentMethod, confirmPaymentIntent } = useStripeTerminal();
+  const { retrievePaymentIntent, collectPaymentMethod, confirmPaymentIntent } = useStripeTerminal();
 
   function parseAmountCents(input: string): number | null {
     // Accept formats: "25", "25.00", "25.5"
@@ -48,18 +48,31 @@ export default function ChargeScreen({ navigation }: Props) {
     setLoading(true);
     try {
       // 1. Create PaymentIntent on backend
+      console.log('[Charge] Creating PaymentIntent for', cents, 'cents');
       const { clientSecret } = await createPaymentIntent(cents, memo || undefined);
+      console.log('[Charge] Got clientSecret');
 
-      // 2. Collect payment method (reader prompts tap/insert/swipe)
-      const { error: collectError } = await collectPaymentMethod({ paymentIntentClientSecret: clientSecret });
-      if (collectError) {
-        setError(collectError.message);
+      // 2. Retrieve the PaymentIntent object from the SDK
+      const { paymentIntent, error: retrieveError } = await retrievePaymentIntent(clientSecret);
+      console.log('[Charge] Retrieve result:', { pi: paymentIntent?.id, status: paymentIntent?.status, error: retrieveError?.message });
+      if (retrieveError || !paymentIntent) {
+        setError(retrieveError?.message || 'Failed to retrieve payment intent');
         setLoading(false);
         return;
       }
 
-      // 3. Confirm the payment
-      const { error: confirmError } = await confirmPaymentIntent({ paymentIntentClientSecret: clientSecret });
+      // 3. Collect payment method (reader prompts tap/insert/swipe)
+      const { paymentIntent: collectedPI, error: collectError } = await collectPaymentMethod({ paymentIntent });
+      console.log('[Charge] Collect result:', { pi: collectedPI?.id, status: collectedPI?.status, error: collectError?.message });
+      if (collectError || !collectedPI) {
+        setError(collectError?.message || 'Failed to collect payment method');
+        setLoading(false);
+        return;
+      }
+
+      // 4. Confirm the payment
+      const { paymentIntent: confirmedPI, error: confirmError } = await confirmPaymentIntent({ paymentIntent: collectedPI });
+      console.log('[Charge] Confirm result:', { pi: confirmedPI?.id, status: confirmedPI?.status, error: confirmError?.message });
       if (confirmError) {
         navigation.navigate('PaymentStatus', {
           success: false,

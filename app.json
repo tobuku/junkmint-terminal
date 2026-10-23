@@ -11,16 +11,28 @@
       "bundleIdentifier": "com.junkmint.terminal",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "This app uses Bluetooth to connect to the Stripe M2 card reader.",
+        "NSBluetoothPeripheralUsageDescription": "This app uses Bluetooth to communicate with the Stripe M2 card reader.",
         "NSLocalNetworkUsageDescription": "This app uses the local network to discover card readers.",
         "NSLocationWhenInUseUsageDescription": "Location is required to connect to the card reader.",
-        "ITSAppUsesNonExemptEncryption": false
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Location is required to connect to the card reader.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["bluetooth-central"]
+      },
+      "entitlements": {
+        "com.apple.developer.networking.wifi-info": true
       }
     },
     "plugins": [
       [
         "@stripe/stripe-terminal-react-native",
         {
-          "bluetoothBackgroundMode": false
+          "bluetoothBackgroundMode": true
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Location is required to scan for Bluetooth card readers."
         }
       ]
     ],

@@ -25,6 +25,20 @@ export async function fetchConnectionToken(): Promise<string> {
   return secret;
 }
 
+export async function fetchLocationId(): Promise<string> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_BASE}/api/org/stripe/terminal/location`, {
+    method: 'POST',
+    headers,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to fetch location: ${res.status} ${body}`);
+  }
+  const { locationId } = await res.json();
+  return locationId;
+}
+
 export async function createPaymentIntent(amountCents: number, description?: string) {
   const headers = await getAuthHeaders();
   const res = await fetch(`${API_BASE}/api/org/stripe/terminal/create-payment-intent`, {

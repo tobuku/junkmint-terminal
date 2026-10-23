@@ -4,7 +4,19 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StripeTerminalProvider } from '@stripe/stripe-terminal-react-native';
 import { supabase } from './src/lib/supabase';
-import { fetchConnectionToken } from './src/lib/api';
+import { fetchConnectionToken as _fetchConnectionToken } from './src/lib/api';
+
+async function fetchConnectionTokenWithLogging(): Promise<string> {
+  try {
+    console.log('[Terminal] Fetching connection token...');
+    const token = await _fetchConnectionToken();
+    console.log('[Terminal] Got connection token OK');
+    return token;
+  } catch (e: any) {
+    console.error('[Terminal] Token fetch FAILED:', e.message);
+    throw e;
+  }
+}
 import type { Session } from '@supabase/supabase-js';
 
 import LoginScreen from './src/screens/LoginScreen';
@@ -59,7 +71,7 @@ export default function App() {
   return (
     <StripeTerminalProvider
       logLevel="verbose"
-      tokenProvider={fetchConnectionToken}
+      tokenProvider={fetchConnectionTokenWithLogging}
     >
       <NavigationContainer>
         <Stack.Navigator screenOptions={screenOptions}>

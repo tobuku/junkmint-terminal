@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,38 +6,95 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
+  Platform,
 } from 'react-native';
 import {
   useStripeTerminal,
   Reader,
 } from '@stripe/stripe-terminal-react-native';
+import * as Location from 'expo-location';
+import { fetchLocationId } from '../lib/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
+// In dev, use simulated internet readers to avoid Bluetooth crash in beta SDK.
+// In production, use real Bluetooth scan for the M2 reader.
+// Set to false to use real Bluetooth M2 reader.
+// Simulated internet readers can't do card-present payments.
+const USE_SIMULATED = false;
+
 export default function ReaderScreen({ navigation }: Props) {
   const [readers, setReaders] = useState<Reader.Type[]>([]);
   const [scanning, setScanning] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [connectedReader, setConnectedReader] = useState<Reader.Type | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState('');
 
-  const { discoverReaders, connectBluetoothReader, cancelDiscovering } =
-    useStripeTerminal();
+  const { initialize, discoverReaders, connectReader, disconnectReader, cancelDiscovering } =
+    useStripeTerminal({
+      onUpdateDiscoveredReaders: (updatedReaders) => {
+        setReaders(updatedReaders);
+      },
+    });
+
+  useEffect(() => {
+    initialize().then(() => {
+      setInitialized(true);
+    }).catch((e: any) => {
+      setError(`SDK init failed: ${e?.message || e}`);
+    });
+  }, [initialize]);
+
+  const handleDisconnect = useCallback(async () => {
+    setError('');
+    try {
+      await disconnectReader();
+      setConnectedReader(null);
+      console.log('[Terminal] Disconnected');
+    } catch (e: any) {
+      setError(e.message || 'Failed to disconnect');
+    }
+  }, [disconnectReader]);
 
   const handleDiscover = useCallback(async () => {
     setError('');
     setReaders([]);
+
+    if (!USE_SIMULATED && Platform.OS === 'ios') {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Location permission is required to scan for readers.');
+        return;
+      }
+    }
+
     setScanning(true);
-    const { error: discoverError } = await discoverReaders({
-      discoveryMethod: 'bluetoothScan',
-      simulated: __DEV__, // use simulated reader in dev
-    });
-    setScanning(false);
-    if (discoverError) {
-      setError(discoverError.message);
+    console.log('[Terminal] Starting reader discovery...');
+    // Disconnect if already connected from a previous session
+    try {
+      await disconnectReader();
+    } catch (_) {
+      // Not connected — that's fine
+    }
+    try {
+      const discoveryParams = USE_SIMULATED
+        ? { discoveryMethod: 'internet' as const, simulated: true }
+        : { discoveryMethod: 'bluetoothScan' as const, simulated: false };
+
+      const { error: discoverError } = await discoverReaders(discoveryParams);
+      setScanning(false);
+      if (discoverError) {
+        console.error('[Terminal] Discovery error:', discoverError.message);
+        setError(discoverError.message);
+      }
+    } catch (e: any) {
+      setScanning(false);
+      console.error('[Terminal] Discovery crash:', e.message);
+      setError(e.message || 'Discovery failed');
     }
   }, [discoverReaders]);
 
@@ -46,27 +103,40 @@ export default function ReaderScreen({ navigation }: Props) {
       setError('');
       setConnecting(true);
       await cancelDiscovering();
-      const { reader: connected, error: connectError } =
-        await connectBluetoothReader({
-          reader,
-          locationId: reader.locationId ?? undefined,
-        });
-      setConnecting(false);
-      if (connectError) {
-        setError(connectError.message);
-        return;
-      }
-      if (connected) {
-        setConnectedReader(connected);
+      console.log('[Terminal] Connecting to reader:', reader.serialNumber);
+      try {
+        // Fetch the Stripe Terminal location for this org
+        let locationId = reader.locationId;
+        if (!locationId || locationId === 'tml_simulated') {
+          console.log('[Terminal] Fetching location ID...');
+          locationId = await fetchLocationId();
+          console.log('[Terminal] Got location ID:', locationId);
+        }
+
+        const { reader: connected, error: connectError } =
+          await connectReader({
+            reader,
+            discoveryMethod: USE_SIMULATED ? 'internet' : 'bluetoothScan',
+            locationId,
+          });
+        setConnecting(false);
+        if (connectError) {
+          console.error('[Terminal] Connect error:', connectError.message);
+          setError(connectError.message);
+          return;
+        }
+        if (connected) {
+          console.log('[Terminal] Connected to:', connected.serialNumber);
+          setConnectedReader(connected);
+        }
+      } catch (e: any) {
+        setConnecting(false);
+        console.error('[Terminal] Connect crash:', e.message);
+        setError(e.message || 'Connection failed');
       }
     },
-    [connectBluetoothReader, cancelDiscovering],
+    [connectReader, cancelDiscovering],
   );
-
-  // The SDK fires this callback as readers are discovered
-  // We register it via the onUpdateDiscoveredReaders in StripeTerminalProvider
-  // For now we handle it through the discover promise
-  // TODO: wire onUpdateDiscoveredReaders if needed
 
   if (connectedReader) {
     return (
@@ -77,14 +147,26 @@ export default function ReaderScreen({ navigation }: Props) {
             {connectedReader.label || connectedReader.serialNumber}
           </Text>
           <Text style={styles.readerDetail}>
-            Battery: {connectedReader.batteryLevel != null ? `${Math.round(connectedReader.batteryLevel * 100)}%` : 'N/A'}
+            {connectedReader.deviceType}
+            {connectedReader.batteryLevel != null
+              ? ` | Battery: ${Math.round(connectedReader.batteryLevel * 100)}%`
+              : ''}
           </Text>
+          {USE_SIMULATED && (
+            <Text style={styles.readerDetail}>Simulated (dev mode)</Text>
+          )}
         </View>
         <TouchableOpacity
           style={styles.button}
           onPress={() => navigation.navigate('Charge')}
         >
           <Text style={styles.buttonText}>Collect Payment</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.disconnectButton}
+          onPress={handleDisconnect}
+        >
+          <Text style={styles.disconnectText}>Disconnect Reader</Text>
         </TouchableOpacity>
       </View>
     );
@@ -94,15 +176,17 @@ export default function ReaderScreen({ navigation }: Props) {
     <View style={styles.container}>
       <Text style={styles.title}>Connect Reader</Text>
       <Text style={styles.subtitle}>
-        Discover your Stripe M2 reader via Bluetooth
+        {USE_SIMULATED
+          ? 'Simulated readers (dev mode)'
+          : 'Discover your Stripe M2 reader via Bluetooth'}
       </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <TouchableOpacity
-        style={[styles.button, scanning && styles.buttonDisabled]}
+        style={[styles.button, (scanning || !initialized) && styles.buttonDisabled]}
         onPress={handleDiscover}
-        disabled={scanning || connecting}
+        disabled={scanning || connecting || !initialized}
       >
         {scanning ? (
           <ActivityIndicator color="#fff" />
@@ -202,4 +286,13 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   connectingText: { color: '#94a3b8', marginLeft: 8 },
+  disconnectButton: {
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  disconnectText: { color: '#94a3b8', fontSize: 16 },
 });
