@@ -1,32 +1,58 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 
-type RootStackParamList = {
-  PaymentStatus: {
-    success: boolean;
-    amountCents: number;
-    message?: string;
-  };
-  [key: string]: any;
+type Props = {
+  navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<{
+    PaymentStatus: {
+      success: boolean;
+      amountCents: number;
+      message?: string;
+      paymentIntentId?: string;
+      returnUrl?: string;
+    };
+  }, 'PaymentStatus'>;
 };
 
-type Props = NativeStackScreenProps<RootStackParamList, 'PaymentStatus'>;
-
 export default function PaymentStatusScreen({ route, navigation }: Props) {
-  const { success, amountCents, message } = route.params;
+  const { success, amountCents, message, paymentIntentId, returnUrl } = route.params;
   const dollars = (amountCents / 100).toFixed(2);
+
+  function handleReturnToJunkMint() {
+    if (returnUrl) {
+      const sep = returnUrl.includes('?') ? '&' : '?';
+      const params = success
+        ? `payment=success&amountCents=${amountCents}${paymentIntentId ? `&paymentIntentId=${paymentIntentId}` : ''}`
+        : 'payment=failed';
+      Linking.openURL(`${returnUrl}${sep}${params}`);
+    } else {
+      Linking.openURL('https://junkmint.com');
+    }
+  }
 
   return (
     <View style={styles.container}>
       <View style={[styles.card, success ? styles.successCard : styles.failCard]}>
-        <Text style={styles.icon}>{success ? 'OK' : 'X'}</Text>
+        <Text style={styles.icon}>{success ? '\u2713' : '\u2717'}</Text>
         <Text style={styles.status}>
           {success ? 'Payment Successful' : 'Payment Failed'}
         </Text>
         <Text style={styles.amount}>${dollars}</Text>
         {message ? <Text style={styles.message}>{message}</Text> : null}
       </View>
+
+      {returnUrl ? (
+        <TouchableOpacity
+          style={styles.returnButton}
+          onPress={handleReturnToJunkMint}
+        >
+          <Text style={styles.returnButtonText}>
+            {success ? 'Return to JunkMint' : 'Back to JunkMint'}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
 
       <TouchableOpacity
         style={styles.button}
@@ -37,9 +63,9 @@ export default function PaymentStatusScreen({ route, navigation }: Props) {
 
       <TouchableOpacity
         style={styles.secondaryButton}
-        onPress={() => navigation.navigate('Reader')}
+        onPress={() => navigation.navigate('Home')}
       >
-        <Text style={styles.secondaryButtonText}>Back to Reader</Text>
+        <Text style={styles.secondaryButtonText}>Home</Text>
       </TouchableOpacity>
     </View>
   );
@@ -69,7 +95,7 @@ const styles = StyleSheet.create({
     borderColor: '#dc2626',
   },
   icon: {
-    fontSize: 32,
+    fontSize: 48,
     fontWeight: '800',
     color: '#fff',
     marginBottom: 12,
@@ -90,6 +116,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 12,
     textAlign: 'center',
+  },
+  returnButton: {
+    backgroundColor: '#16a34a',
+    padding: 18,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  returnButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '700',
   },
   button: {
     backgroundColor: '#2563eb',

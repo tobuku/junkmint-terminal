@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "junkmint-terminal",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.junkmint.terminal",

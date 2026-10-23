@@ -146,6 +146,12 @@ export default function ReaderScreen({ navigation }: Props) {
         >
           <Text style={styles.disconnectText}>Disconnect Reader</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.homeButton}
+          onPress={() => navigation.navigate('Home')}
+        >
+          <Text style={styles.homeText}>Home</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -199,7 +205,7 @@ export default function ReaderScreen({ navigation }: Props) {
             <Text style={styles.emptyText}>
               No readers found. Tap "Scan" to search.
             </Text>
-          ) : null
+          ) : undefined
         }
       />
     </View>
@@ -271,4 +277,11 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
   },
   disconnectText: { color: '#94a3b8', fontSize: 16 },
+  homeButton: {
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  homeText: { color: '#64748b', fontSize: 16 },
 });
