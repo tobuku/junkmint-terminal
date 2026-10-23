@@ -69,7 +69,7 @@ export default function ReaderScreen({ navigation }: Props) {
     try {
       await disconnectReader();
     } catch (_) {
-      // Not connected — that's fine
+      // Not connected
     }
     try {
       const { error: discoverError } = await discoverReaders({
@@ -135,16 +135,16 @@ export default function ReaderScreen({ navigation }: Props) {
           </Text>
         </View>
         <TouchableOpacity
-          style={styles.button}
+          style={styles.primaryButton}
           onPress={() => navigation.navigate('Charge')}
         >
-          <Text style={styles.buttonText}>Collect Payment</Text>
+          <Text style={styles.primaryButtonText}>Collect Payment</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={styles.disconnectButton}
+          style={styles.secondaryButton}
           onPress={handleDisconnect}
         >
-          <Text style={styles.disconnectText}>Disconnect Reader</Text>
+          <Text style={styles.secondaryButtonText}>Disconnect Reader</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.homeButton}
@@ -166,20 +166,20 @@ export default function ReaderScreen({ navigation }: Props) {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <TouchableOpacity
-        style={[styles.button, (scanning || !initialized) && styles.buttonDisabled]}
+        style={[styles.primaryButton, (scanning || !initialized) && styles.buttonDisabled]}
         onPress={handleDiscover}
         disabled={scanning || connecting || !initialized}
       >
         {scanning ? (
-          <ActivityIndicator color="#fff" />
+          <ActivityIndicator color="#0a0a0a" />
         ) : (
-          <Text style={styles.buttonText}>Scan for Readers</Text>
+          <Text style={styles.primaryButtonText}>Scan for Readers</Text>
         )}
       </TouchableOpacity>
 
       {connecting && (
         <View style={styles.connectingRow}>
-          <ActivityIndicator color="#2563eb" />
+          <ActivityIndicator color="#4ade80" />
           <Text style={styles.connectingText}>Connecting...</Text>
         </View>
       )}
@@ -213,7 +213,7 @@ export default function ReaderScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a', padding: 24 },
+  container: { flex: 1, backgroundColor: '#0a0a0a', padding: 24 },
   title: {
     fontSize: 24,
     fontWeight: '700',
@@ -226,36 +226,36 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 14,
   },
-  button: {
-    backgroundColor: '#2563eb',
+  primaryButton: {
+    backgroundColor: '#4ade80',
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
   },
+  primaryButtonText: { color: '#0a0a0a', fontSize: 16, fontWeight: '700' },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   list: { marginTop: 24 },
   readerRow: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#1a1a2e',
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#2a2a3e',
   },
   readerName: { color: '#fff', fontSize: 16, fontWeight: '600' },
   readerDetail: { color: '#94a3b8', fontSize: 13, marginTop: 4 },
   emptyText: { color: '#64748b', textAlign: 'center', marginTop: 32 },
   connectedCard: {
-    backgroundColor: '#064e3b',
+    backgroundColor: '#1a1a2e',
     padding: 24,
     borderRadius: 12,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#059669',
+    borderColor: '#4ade80',
   },
   connectedLabel: {
-    color: '#34d399',
+    color: '#4ade80',
     fontSize: 13,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -268,18 +268,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   connectingText: { color: '#94a3b8', marginLeft: 8 },
-  disconnectButton: {
+  secondaryButton: {
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#2a2a3e',
   },
-  disconnectText: { color: '#94a3b8', fontSize: 16 },
+  secondaryButtonText: { color: '#94a3b8', fontSize: 16 },
   homeButton: {
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 12,
   },

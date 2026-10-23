@@ -32,7 +32,6 @@ export default function LoginScreen() {
     if (authError) {
       setError(authError.message);
     }
-    // Navigation happens automatically via auth state listener in App.tsx
   }
 
   return (
@@ -49,7 +48,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email"
-          placeholderTextColor="#999"
+          placeholderTextColor="#64748b"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
@@ -59,7 +58,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Password"
-          placeholderTextColor="#999"
+          placeholderTextColor="#64748b"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
@@ -71,7 +70,7 @@ export default function LoginScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#0a0a0a" />
           ) : (
             <Text style={styles.buttonText}>Sign In</Text>
           )}
@@ -82,15 +81,15 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
   inner: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 32,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
     marginBottom: 4,
@@ -108,22 +107,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#1a1a2e',
     color: '#fff',
     fontSize: 16,
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#2a2a3e',
   },
   button: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#4ade80',
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 8,
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  buttonText: { color: '#0a0a0a', fontSize: 16, fontWeight: '700' },
 });

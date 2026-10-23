@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Linking,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useStripeTerminal } from '@stripe/stripe-terminal-react-native';
 import { createPaymentIntent } from '../lib/api';
@@ -19,6 +20,115 @@ type Props = {
   navigation: NativeStackNavigationProp<any>;
   route: RouteProp<{ Charge: { amountCents?: number; memo?: string; returnUrl?: string } }, 'Charge'>;
 };
+
+function ProcessingOverlay() {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const opacityAnim = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(pulseAnim, {
+            toValue: 1.3,
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 0.2,
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 0.6,
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [pulseAnim, opacityAnim]);
+
+  return (
+    <View style={overlayStyles.container}>
+      <View style={overlayStyles.content}>
+        <Animated.View
+          style={[
+            overlayStyles.pulseCircle,
+            { transform: [{ scale: pulseAnim }], opacity: opacityAnim },
+          ]}
+        />
+        <View style={overlayStyles.innerCircle}>
+          <Text style={overlayStyles.cardIcon}>{'\u25B3'}</Text>
+        </View>
+        <Text style={overlayStyles.title}>Processing Payment...</Text>
+        <Text style={overlayStyles.subtitle}>Present card to reader</Text>
+      </View>
+    </View>
+  );
+}
+
+const overlayStyles = StyleSheet.create({
+  container: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10, 10, 10, 0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  content: {
+    alignItems: 'center',
+  },
+  pulseCircle: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#4ade80',
+  },
+  innerCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(74, 222, 128, 0.2)',
+    borderWidth: 2,
+    borderColor: '#4ade80',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  cardIcon: {
+    fontSize: 36,
+    color: '#4ade80',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#94a3b8',
+  },
+});
 
 export default function ChargeScreen({ navigation, route }: Props) {
   const deepLinkAmount = route.params?.amountCents;
@@ -34,7 +144,6 @@ export default function ChargeScreen({ navigation, route }: Props) {
 
   const { retrievePaymentIntent, collectPaymentMethod, confirmPaymentIntent } = useStripeTerminal();
 
-  // If amount came from deep link, show it's pre-filled
   const isAutoPopulated = !!deepLinkAmount;
 
   function parseAmountCents(input: string): number | null {
@@ -159,13 +268,9 @@ export default function ChargeScreen({ navigation, route }: Props) {
           onPress={handleCollect}
           disabled={loading}
         >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>
-              Charge {displayAmount ? `$${(displayAmount / 100).toFixed(2)}` : ''}
-            </Text>
-          )}
+          <Text style={styles.buttonText}>
+            Charge {displayAmount ? `$${(displayAmount / 100).toFixed(2)}` : ''}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
@@ -174,21 +279,23 @@ export default function ChargeScreen({ navigation, route }: Props) {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {loading && <ProcessingOverlay />}
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f172a' },
+  container: { flex: 1, backgroundColor: '#0a0a0a' },
   inner: { flex: 1, padding: 24, justifyContent: 'center' },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
   },
   autoLabel: {
-    color: '#34d399',
+    color: '#4ade80',
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 16,
@@ -209,10 +316,10 @@ const styles = StyleSheet.create({
   amountRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
-    borderRadius: 10,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#2a2a3e',
     paddingHorizontal: 16,
   },
   dollar: { color: '#94a3b8', fontSize: 28, fontWeight: '600' },
@@ -224,39 +331,39 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: '#1a1a2e',
     color: '#fff',
     fontSize: 16,
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#2a2a3e',
   },
   memoText: {
     color: '#cbd5e1',
     fontSize: 16,
-    backgroundColor: '#1e293b',
+    backgroundColor: '#1a1a2e',
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#2a2a3e',
   },
   button: {
-    backgroundColor: '#16a34a',
+    backgroundColor: '#4ade80',
     padding: 18,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 32,
   },
   buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  buttonText: { color: '#0a0a0a', fontSize: 18, fontWeight: '700' },
   cancelButton: {
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#4ade80',
   },
-  cancelText: { color: '#94a3b8', fontSize: 16 },
+  cancelText: { color: '#4ade80', fontSize: 16, fontWeight: '600' },
 });

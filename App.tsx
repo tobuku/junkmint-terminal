@@ -17,10 +17,10 @@ import PaymentStatusScreen from './src/screens/PaymentStatusScreen';
 const Stack = createNativeStackNavigator();
 
 const screenOptions = {
-  headerStyle: { backgroundColor: '#0f172a' },
+  headerStyle: { backgroundColor: '#0a0a0a' },
   headerTintColor: '#fff',
   headerTitleStyle: { fontWeight: '600' as const },
-  contentStyle: { backgroundColor: '#0f172a' },
+  contentStyle: { backgroundColor: '#0a0a0a' },
 };
 
 function parseDeepLink(url: string): { amount?: number; memo?: string; returnUrl?: string } | null {
@@ -76,12 +76,10 @@ export default function App() {
   }
 
   useEffect(() => {
-    // Handle deep link that opened the app
     Linking.getInitialURL().then((url) => {
       if (url) handleDeepLink(url);
     });
 
-    // Handle deep link while app is running
     const sub = Linking.addEventListener('url', ({ url }) => {
       handleDeepLink(url);
     });
@@ -104,7 +102,7 @@ export default function App() {
   if (loading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#4ade80" />
       </View>
     );
   }
@@ -168,6 +166,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0a0a0a',
   },
 });

@@ -34,38 +34,51 @@ export default function PaymentStatusScreen({ route, navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.card, success ? styles.successCard : styles.failCard]}>
-        <Text style={styles.icon}>{success ? '\u2713' : '\u2717'}</Text>
-        <Text style={styles.status}>
-          {success ? 'Payment Successful' : 'Payment Failed'}
-        </Text>
-        <Text style={styles.amount}>${dollars}</Text>
-        {message ? <Text style={styles.message}>{message}</Text> : null}
+      {/* Radial glow effect */}
+      <View style={styles.glowContainer}>
+        <View style={[styles.glowRing3, success ? styles.glowGreen : styles.glowRed]} />
+        <View style={[styles.glowRing2, success ? styles.glowGreen : styles.glowRed]} />
+        <View style={[styles.glowRing1, success ? styles.glowGreen : styles.glowRed]} />
+        <View style={[styles.iconCircle, success ? styles.iconCircleSuccess : styles.iconCircleFail]}>
+          <Text style={[styles.icon, success ? styles.iconSuccess : styles.iconFail]}>
+            {success ? '\u2713' : '\u2717'}
+          </Text>
+        </View>
       </View>
+
+      <Text style={styles.status}>
+        {success ? 'Payment Successful!' : 'Payment Failed'}
+      </Text>
+      <Text style={styles.subtitle}>
+        {success
+          ? 'Your transaction has been completed securely.'
+          : message || 'The transaction could not be completed.'}
+      </Text>
+      <Text style={styles.amount}>${dollars}</Text>
 
       {returnUrl ? (
         <TouchableOpacity
-          style={styles.returnButton}
+          style={styles.primaryButton}
           onPress={handleReturnToJunkMint}
         >
-          <Text style={styles.returnButtonText}>
+          <Text style={styles.primaryButtonText}>
             {success ? 'Return to JunkMint' : 'Back to JunkMint'}
           </Text>
         </TouchableOpacity>
       ) : null}
 
       <TouchableOpacity
-        style={styles.button}
+        style={styles.secondaryButton}
         onPress={() => navigation.navigate('Charge')}
       >
-        <Text style={styles.buttonText}>New Payment</Text>
+        <Text style={styles.secondaryButtonText}>New Payment</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={styles.secondaryButton}
+        style={styles.tertiaryButton}
         onPress={() => navigation.navigate('Home')}
       >
-        <Text style={styles.secondaryButtonText}>Home</Text>
+        <Text style={styles.tertiaryButtonText}>Home</Text>
       </TouchableOpacity>
     </View>
   );
@@ -74,75 +87,121 @@ export default function PaymentStatusScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#0a0a0a',
     padding: 24,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  card: {
-    padding: 32,
-    borderRadius: 16,
+  glowContainer: {
+    width: 180,
+    height: 180,
+    justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
   },
-  successCard: {
-    backgroundColor: '#064e3b',
-    borderWidth: 1,
-    borderColor: '#059669',
+  glowRing3: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    opacity: 0.08,
   },
-  failCard: {
-    backgroundColor: '#450a0a',
-    borderWidth: 1,
-    borderColor: '#dc2626',
+  glowRing2: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    opacity: 0.15,
+  },
+  glowRing1: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    opacity: 0.25,
+  },
+  glowGreen: {
+    backgroundColor: '#4ade80',
+  },
+  glowRed: {
+    backgroundColor: '#f87171',
+  },
+  iconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+  },
+  iconCircleSuccess: {
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
+    borderColor: '#4ade80',
+  },
+  iconCircleFail: {
+    backgroundColor: 'rgba(248, 113, 113, 0.15)',
+    borderColor: '#f87171',
   },
   icon: {
-    fontSize: 48,
+    fontSize: 40,
     fontWeight: '800',
-    color: '#fff',
-    marginBottom: 12,
+  },
+  iconSuccess: {
+    color: '#4ade80',
+  },
+  iconFail: {
+    color: '#f87171',
   },
   status: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '700',
     color: '#fff',
     marginBottom: 8,
-  },
-  amount: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#fff',
-  },
-  message: {
-    color: '#fca5a5',
-    fontSize: 14,
-    marginTop: 12,
     textAlign: 'center',
   },
-  returnButton: {
-    backgroundColor: '#16a34a',
+  subtitle: {
+    fontSize: 15,
+    color: '#94a3b8',
+    textAlign: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  amount: {
+    fontSize: 42,
+    fontWeight: '800',
+    color: '#fff',
+    marginBottom: 40,
+  },
+  primaryButton: {
+    backgroundColor: '#4ade80',
     padding: 18,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
+    width: '100%',
     marginBottom: 12,
   },
-  returnButtonText: {
-    color: '#fff',
+  primaryButtonText: {
+    color: '#0a0a0a',
     fontSize: 18,
     fontWeight: '700',
   },
-  button: {
-    backgroundColor: '#2563eb',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   secondaryButton: {
     padding: 16,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
+    width: '100%',
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#4ade80',
   },
-  secondaryButtonText: { color: '#94a3b8', fontSize: 16 },
+  secondaryButtonText: { color: '#4ade80', fontSize: 16, fontWeight: '600' },
+  tertiaryButton: {
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#2a2a3e',
+  },
+  tertiaryButtonText: { color: '#94a3b8', fontSize: 16 },
 });
