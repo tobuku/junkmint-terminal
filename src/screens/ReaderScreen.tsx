@@ -20,12 +20,6 @@ type Props = {
   navigation: NativeStackNavigationProp<any>;
 };
 
-// In dev, use simulated internet readers to avoid Bluetooth crash in beta SDK.
-// In production, use real Bluetooth scan for the M2 reader.
-// Set to false to use real Bluetooth M2 reader.
-// Simulated internet readers can't do card-present payments.
-const USE_SIMULATED = false;
-
 export default function ReaderScreen({ navigation }: Props) {
   const [readers, setReaders] = useState<Reader.Type[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -54,7 +48,6 @@ export default function ReaderScreen({ navigation }: Props) {
     try {
       await disconnectReader();
       setConnectedReader(null);
-      console.log('[Terminal] Disconnected');
     } catch (e: any) {
       setError(e.message || 'Failed to disconnect');
     }
@@ -64,7 +57,7 @@ export default function ReaderScreen({ navigation }: Props) {
     setError('');
     setReaders([]);
 
-    if (!USE_SIMULATED && Platform.OS === 'ios') {
+    if (Platform.OS === 'ios') {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         setError('Location permission is required to scan for readers.');
@@ -73,65 +66,53 @@ export default function ReaderScreen({ navigation }: Props) {
     }
 
     setScanning(true);
-    console.log('[Terminal] Starting reader discovery...');
-    // Disconnect if already connected from a previous session
     try {
       await disconnectReader();
     } catch (_) {
       // Not connected — that's fine
     }
     try {
-      const discoveryParams = USE_SIMULATED
-        ? { discoveryMethod: 'internet' as const, simulated: true }
-        : { discoveryMethod: 'bluetoothScan' as const, simulated: false };
-
-      const { error: discoverError } = await discoverReaders(discoveryParams);
+      const { error: discoverError } = await discoverReaders({
+        discoveryMethod: 'bluetoothScan',
+        simulated: false,
+      });
       setScanning(false);
       if (discoverError) {
-        console.error('[Terminal] Discovery error:', discoverError.message);
         setError(discoverError.message);
       }
     } catch (e: any) {
       setScanning(false);
-      console.error('[Terminal] Discovery crash:', e.message);
       setError(e.message || 'Discovery failed');
     }
-  }, [discoverReaders]);
+  }, [discoverReaders, disconnectReader]);
 
   const handleConnect = useCallback(
     async (reader: Reader.Type) => {
       setError('');
       setConnecting(true);
       await cancelDiscovering();
-      console.log('[Terminal] Connecting to reader:', reader.serialNumber);
       try {
-        // Fetch the Stripe Terminal location for this org
         let locationId = reader.locationId;
         if (!locationId || locationId === 'tml_simulated') {
-          console.log('[Terminal] Fetching location ID...');
           locationId = await fetchLocationId();
-          console.log('[Terminal] Got location ID:', locationId);
         }
 
         const { reader: connected, error: connectError } =
           await connectReader({
             reader,
-            discoveryMethod: USE_SIMULATED ? 'internet' : 'bluetoothScan',
+            discoveryMethod: 'bluetoothScan',
             locationId,
           });
         setConnecting(false);
         if (connectError) {
-          console.error('[Terminal] Connect error:', connectError.message);
           setError(connectError.message);
           return;
         }
         if (connected) {
-          console.log('[Terminal] Connected to:', connected.serialNumber);
           setConnectedReader(connected);
         }
       } catch (e: any) {
         setConnecting(false);
-        console.error('[Terminal] Connect crash:', e.message);
         setError(e.message || 'Connection failed');
       }
     },
@@ -152,9 +133,6 @@ export default function ReaderScreen({ navigation }: Props) {
               ? ` | Battery: ${Math.round(connectedReader.batteryLevel * 100)}%`
               : ''}
           </Text>
-          {USE_SIMULATED && (
-            <Text style={styles.readerDetail}>Simulated (dev mode)</Text>
-          )}
         </View>
         <TouchableOpacity
           style={styles.button}
@@ -176,9 +154,7 @@ export default function ReaderScreen({ navigation }: Props) {
     <View style={styles.container}>
       <Text style={styles.title}>Connect Reader</Text>
       <Text style={styles.subtitle}>
-        {USE_SIMULATED
-          ? 'Simulated readers (dev mode)'
-          : 'Discover your Stripe M2 reader via Bluetooth'}
+        Discover your Stripe M2 reader via Bluetooth
       </Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}

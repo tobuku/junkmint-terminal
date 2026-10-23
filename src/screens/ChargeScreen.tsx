@@ -47,32 +47,23 @@ export default function ChargeScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      // 1. Create PaymentIntent on backend
-      console.log('[Charge] Creating PaymentIntent for', cents, 'cents');
       const { clientSecret } = await createPaymentIntent(cents, memo || undefined);
-      console.log('[Charge] Got clientSecret');
 
-      // 2. Retrieve the PaymentIntent object from the SDK
       const { paymentIntent, error: retrieveError } = await retrievePaymentIntent(clientSecret);
-      console.log('[Charge] Retrieve result:', { pi: paymentIntent?.id, status: paymentIntent?.status, error: retrieveError?.message });
       if (retrieveError || !paymentIntent) {
         setError(retrieveError?.message || 'Failed to retrieve payment intent');
         setLoading(false);
         return;
       }
 
-      // 3. Collect payment method (reader prompts tap/insert/swipe)
       const { paymentIntent: collectedPI, error: collectError } = await collectPaymentMethod({ paymentIntent });
-      console.log('[Charge] Collect result:', { pi: collectedPI?.id, status: collectedPI?.status, error: collectError?.message });
       if (collectError || !collectedPI) {
         setError(collectError?.message || 'Failed to collect payment method');
         setLoading(false);
         return;
       }
 
-      // 4. Confirm the payment
-      const { paymentIntent: confirmedPI, error: confirmError } = await confirmPaymentIntent({ paymentIntent: collectedPI });
-      console.log('[Charge] Confirm result:', { pi: confirmedPI?.id, status: confirmedPI?.status, error: confirmError?.message });
+      const { error: confirmError } = await confirmPaymentIntent({ paymentIntent: collectedPI });
       if (confirmError) {
         navigation.navigate('PaymentStatus', {
           success: false,
@@ -117,12 +108,6 @@ export default function ChargeScreen({ navigation }: Props) {
             autoFocus
           />
         </View>
-        {displayAmount != null && (
-          <Text style={styles.centsPreview}>
-            = {displayAmount} cents
-          </Text>
-        )}
-
         <Text style={styles.label}>Memo (optional)</Text>
         <TextInput
           style={styles.input}
@@ -188,12 +173,6 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '600',
     padding: 16,
-  },
-  centsPreview: {
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
   },
   input: {
     backgroundColor: '#1e293b',
