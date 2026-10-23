@@ -7,12 +7,13 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "com.junkmint.terminal",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "This app uses Bluetooth to connect to the Stripe M2 card reader.",
         "NSLocalNetworkUsageDescription": "This app uses the local network to discover card readers.",
-        "NSLocationWhenInUseUsageDescription": "Location is required to connect to the card reader."
+        "NSLocationWhenInUseUsageDescription": "Location is required to connect to the card reader.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "plugins": [
@@ -25,8 +26,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "3b0fa11e-3e01-4949-8d40-528e5499c2e9"
       }
-    }
+    },
+    "owner": "makameai"
   }
 }
