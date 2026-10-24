@@ -245,7 +245,7 @@ export default function ChargeScreen({ navigation, route }: Props) {
           />
         </View>
 
-        {memo ? (
+        {deepLinkMemo ? (
           <>
             <Text style={styles.label}>Memo</Text>
             <Text style={styles.memoText}>{memo}</Text>

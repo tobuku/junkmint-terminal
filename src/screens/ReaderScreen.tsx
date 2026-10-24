@@ -13,8 +13,11 @@ import {
   Reader,
 } from '@stripe/stripe-terminal-react-native';
 import * as Location from 'expo-location';
+import * as SecureStore from 'expo-secure-store';
 import { fetchLocationId } from '../lib/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+const LAST_READER_KEY = 'junkmint_last_reader_serial';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -26,6 +29,7 @@ export default function ReaderScreen({ navigation }: Props) {
   const [connecting, setConnecting] = useState(false);
   const [connectedReader, setConnectedReader] = useState<Reader.Type | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [autoConnecting, setAutoConnecting] = useState(false);
   const [error, setError] = useState('');
 
   const { initialize, discoverReaders, connectReader, disconnectReader, cancelDiscovering } =
@@ -43,11 +47,93 @@ export default function ReaderScreen({ navigation }: Props) {
     });
   }, [initialize]);
 
+  // Auto-reconnect to last known reader
+  useEffect(() => {
+    if (!initialized) return;
+
+    let cancelled = false;
+
+    async function tryAutoReconnect() {
+      const savedSerial = await SecureStore.getItemAsync(LAST_READER_KEY);
+      if (!savedSerial || cancelled) return;
+
+      if (Platform.OS === 'ios') {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted' || cancelled) return;
+      }
+
+      setAutoConnecting(true);
+      try {
+        await disconnectReader();
+      } catch (_) {}
+
+      if (cancelled) return;
+
+      // Start discovery and wait for the saved reader to appear
+      const { error: discoverError } = await discoverReaders({
+        discoveryMethod: 'bluetoothScan',
+        simulated: false,
+      });
+
+      if (discoverError || cancelled) {
+        setAutoConnecting(false);
+      }
+    }
+
+    tryAutoReconnect();
+    return () => { cancelled = true; };
+  }, [initialized]);
+
+  // When readers update during auto-connect, look for saved reader
+  useEffect(() => {
+    if (!autoConnecting || readers.length === 0) return;
+
+    async function connectToSaved() {
+      const savedSerial = await SecureStore.getItemAsync(LAST_READER_KEY);
+      if (!savedSerial) {
+        setAutoConnecting(false);
+        return;
+      }
+
+      const match = readers.find((r) => r.serialNumber === savedSerial);
+      if (!match) return; // Keep waiting for more readers
+
+      await cancelDiscovering();
+      setConnecting(true);
+      try {
+        let locationId = match.locationId;
+        if (!locationId || locationId === 'tml_simulated') {
+          locationId = await fetchLocationId();
+        }
+
+        const { reader: connected, error: connectError } = await connectReader({
+          reader: match,
+          discoveryMethod: 'bluetoothScan',
+          locationId,
+        });
+
+        if (connectError) {
+          setError(`Auto-connect failed: ${connectError.message}`);
+        } else if (connected) {
+          setConnectedReader(connected);
+        }
+      } catch (e: any) {
+        setError(`Auto-connect failed: ${e.message}`);
+      } finally {
+        setConnecting(false);
+        setAutoConnecting(false);
+      }
+    }
+
+    connectToSaved();
+  }, [readers, autoConnecting]);
+
   const handleDisconnect = useCallback(async () => {
     setError('');
     try {
       await disconnectReader();
       setConnectedReader(null);
+      await SecureStore.deleteItemAsync(LAST_READER_KEY);
     } catch (e: any) {
       setError(e.message || 'Failed to disconnect');
     }
@@ -56,6 +142,7 @@ export default function ReaderScreen({ navigation }: Props) {
   const handleDiscover = useCallback(async () => {
     setError('');
     setReaders([]);
+    setAutoConnecting(false);
 
     if (Platform.OS === 'ios') {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -110,6 +197,7 @@ export default function ReaderScreen({ navigation }: Props) {
         }
         if (connected) {
           setConnectedReader(connected);
+          await SecureStore.setItemAsync(LAST_READER_KEY, reader.serialNumber);
         }
       } catch (e: any) {
         setConnecting(false);
@@ -151,6 +239,24 @@ export default function ReaderScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('Home')}
         >
           <Text style={styles.homeText}>Home</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (autoConnecting) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#4ade80" />
+        <Text style={styles.autoConnectText}>Reconnecting to reader...</Text>
+        <TouchableOpacity
+          style={[styles.secondaryButton, { marginTop: 24 }]}
+          onPress={() => {
+            setAutoConnecting(false);
+            cancelDiscovering();
+          }}
+        >
+          <Text style={styles.secondaryButtonText}>Cancel</Text>
         </TouchableOpacity>
       </View>
     );
@@ -214,6 +320,7 @@ export default function ReaderScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0a0a0a', padding: 24 },
+  centered: { justifyContent: 'center', alignItems: 'center' },
   title: {
     fontSize: 24,
     fontWeight: '700',
@@ -284,4 +391,9 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   homeText: { color: '#64748b', fontSize: 16 },
+  autoConnectText: {
+    color: '#94a3b8',
+    fontSize: 16,
+    marginTop: 16,
+  },
 });
