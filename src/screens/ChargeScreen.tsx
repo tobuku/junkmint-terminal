@@ -11,10 +11,15 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import Svg, { Circle, Rect, Path, G } from 'react-native-svg';
 import { useStripeTerminal } from '@stripe/stripe-terminal-react-native';
 import { createPaymentIntent } from '../lib/api';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
+
+const SPINNER_SIZE = 160;
+const SPINNER_R = 68;
+const SPINNER_CIRCUMFERENCE = 2 * Math.PI * SPINNER_R;
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -22,58 +27,73 @@ type Props = {
 };
 
 function ProcessingOverlay() {
+  const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const opacityAnim = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
+    const spin = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 1400,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.parallel([
-          Animated.timing(pulseAnim, {
-            toValue: 1.3,
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacityAnim, {
-            toValue: 0.2,
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.parallel([
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacityAnim, {
-            toValue: 0.6,
-            duration: 1200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]),
+        Animated.timing(pulseAnim, {
+          toValue: 1.08,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
       ]),
     );
+    spin.start();
     pulse.start();
-    return () => pulse.stop();
-  }, [pulseAnim, opacityAnim]);
+    return () => { spin.stop(); pulse.stop(); };
+  }, [spinAnim, pulseAnim]);
+
+  const spinInterpolate = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
 
   return (
     <View style={overlayStyles.container}>
       <View style={overlayStyles.content}>
-        <Animated.View
-          style={[
-            overlayStyles.pulseCircle,
-            { transform: [{ scale: pulseAnim }], opacity: opacityAnim },
-          ]}
-        />
-        <View style={overlayStyles.innerCircle}>
-          <Text style={overlayStyles.cardIcon}>{'\u25B3'}</Text>
-        </View>
+        {/* Spinning green arc */}
+        <Animated.View style={{ transform: [{ rotate: spinInterpolate }] }}>
+          <Svg width={SPINNER_SIZE} height={SPINNER_SIZE} viewBox={`0 0 ${SPINNER_SIZE} ${SPINNER_SIZE}`}>
+            <Circle
+              cx={SPINNER_SIZE / 2}
+              cy={SPINNER_SIZE / 2}
+              r={SPINNER_R}
+              stroke="#4ade80"
+              strokeWidth={6}
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray={`${SPINNER_CIRCUMFERENCE * 0.7} ${SPINNER_CIRCUMFERENCE * 0.3}`}
+            />
+          </Svg>
+        </Animated.View>
+        {/* Pulsating credit card in center */}
+        <Animated.View style={[overlayStyles.cardContainer, { transform: [{ scale: pulseAnim }] }]}>
+          <Svg width={64} height={44} viewBox="0 0 64 44">
+            <Rect x={0} y={0} rx={6} ry={6} width={64} height={44} fill="#1a1a2e" stroke="#4ade80" strokeWidth={2} />
+            <Rect x={0} y={10} width={64} height={7} fill="#4ade80" opacity={0.3} />
+            <Rect x={6} y={26} width={12} height={9} rx={2} ry={2} fill="#4ade80" opacity={0.7} />
+            <Rect x={24} y={28} width={8} height={2} rx={1} fill="#4ade80" opacity={0.4} />
+            <Rect x={34} y={28} width={8} height={2} rx={1} fill="#4ade80" opacity={0.4} />
+            <Rect x={44} y={28} width={8} height={2} rx={1} fill="#4ade80" opacity={0.4} />
+          </Svg>
+        </Animated.View>
         <Text style={overlayStyles.title}>Processing Payment...</Text>
         <Text style={overlayStyles.subtitle}>Present card to reader</Text>
       </View>
@@ -95,33 +115,17 @@ const overlayStyles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-  },
-  pulseCircle: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: '#4ade80',
-  },
-  innerCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(74, 222, 128, 0.2)',
-    borderWidth: 2,
-    borderColor: '#4ade80',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
   },
-  cardIcon: {
-    fontSize: 36,
-    color: '#4ade80',
+  cardContainer: {
+    position: 'absolute',
+    top: (SPINNER_SIZE - 44) / 2,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
     color: '#fff',
+    marginTop: 32,
     marginBottom: 8,
   },
   subtitle: {
