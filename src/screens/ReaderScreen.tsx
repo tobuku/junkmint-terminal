@@ -54,6 +54,10 @@ export default function ReaderScreen({ navigation }: Props) {
     let cancelled = false;
 
     async function tryAutoReconnect() {
+      // Brief delay to ensure SDK is fully ready after initialize() resolves
+      await new Promise((r) => setTimeout(r, 1000));
+      if (cancelled) return;
+
       const savedSerial = await SecureStore.getItemAsync(LAST_READER_KEY);
       if (!savedSerial || cancelled) return;
 
