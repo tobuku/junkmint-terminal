@@ -9,6 +9,8 @@
     "scheme": "junkmint-terminal",
     "ios": {
       "supportsTablet": true,
+      "isTabletOnly": true,
+      "requireFullScreen": true,
       "bundleIdentifier": "com.junkmint.terminal",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "This app uses Bluetooth to connect to the Stripe M2 card reader.",
